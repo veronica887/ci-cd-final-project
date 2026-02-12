@@ -1,4 +1,54 @@
 apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: cleanup
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: remove-old-files
+      image: alpine
+      script: |
+        rm -rf $(workspaces.source.path)/*
+
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: eslint
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: run-eslint
+      image: node:18
+      workingDir: $(workspaces.source.path)
+      script: |
+        npm install
+        npx eslint .
+
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: jest
+spec:
+  params:
+    - name: args
+      type: string
+      default: ""
+  workspaces:
+    - name: source
+  steps:
+    - name: run-jest
+      image: node:18
+      workingDir: $(workspaces.source.path)
+      script: |
+        npm install
+        npm test -- $(params.args)
+
+---
+apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: ci-cd-pipeline
@@ -14,7 +64,6 @@ spec:
   tasks:
     - name: cleanup
       taskRef:
-        kind: Task
         name: cleanup
       workspaces:
         - name: source
@@ -29,36 +78,8 @@ spec:
       params:
         - name: url
           value: https://github.com/ibm-developer-skills-network/ttwst-jhxyb-ci-cd-pipeline_js
-        - name: revision
-          value: ""
-        - name: refspec
-          value: ""
-        - name: submodules
-          value: "true"
-        - name: depth
-          value: "1"
-        - name: sslVerify
-          value: "true"
-        - name: crtFileName
-          value: ca-bundle.crt
-        - name: subdirectory
-          value: ""
-        - name: sparseCheckoutDirectories
-          value: ""
         - name: deleteExisting
           value: "true"
-        - name: httpProxy
-          value: ""
-        - name: httpsProxy
-          value: ""
-        - name: noProxy
-          value: ""
-        - name: verbose
-          value: "true"
-        - name: gitInitImage
-          value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:75d6228eb656b8778fb3bb8dc68c686ac1c9b787e5343ae3c2467f8e724af83e
-        - name: userHome
-          value: /home/git
       workspaces:
         - name: output
           workspace: output
@@ -67,7 +88,6 @@ spec:
       runAfter:
         - git-clone
       taskRef:
-        kind: Task
         name: eslint
       workspaces:
         - name: source
@@ -77,42 +97,10 @@ spec:
       runAfter:
         - eslint
       taskRef:
-        kind: Task
         name: jest
       params:
         - name: args
           value: "--passWithNoTests"
-      workspaces:
-        - name: source
-          workspace: output
-
-    - name: buildah
-      runAfter:
-        - jest
-      taskRef:
-        kind: ClusterTask
-        name: buildah
-      params:
-        - name: IMAGE
-          value: $(params.build-image)
-        - name: BUILDER_IMAGE
-          value: registry.redhat.io/rhel8/buildah@sha256:aac6629389db17e99894c5bee0da01d4c8065d11d8c6f6e1602f9484290baa70
-        - name: STORAGE_DRIVER
-          value: vfs
-        - name: DOCKERFILE
-          value: ./Dockerfile
-        - name: CONTEXT
-          value: .
-        - name: TLSVERIFY
-          value: "true"
-        - name: FORMAT
-          value: oci
-        - name: BUILD_EXTRA_ARGS
-          value: ""
-        - name: PUSH_EXTRA_ARGS
-          value: ""
-        - name: SKIP_PUSH
-          value: "false"
       workspaces:
         - name: source
           workspace: output
