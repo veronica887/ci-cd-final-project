@@ -1,30 +1,16 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  creationTimestamp: '2026-02-12T16:43:00Z'
-  generation: 8
-  managedFields:
-    - apiVersion: tekton.dev/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:spec':
-          .: {}
-          'f:finally': {}
-          'f:params': {}
-          'f:tasks': {}
-          'f:workspaces': {}
-      manager: Mozilla
-      operation: Update
-      time: '2026-02-12T21:39:53Z'
   name: ci-cd-pipeline
-  namespace: sn-labs-veronicanava
-  resourceVersion: '2644741258'
-  uid: e20da342-0d5b-4c0c-a3ad-ed4e8d6ca45b
 spec:
   params:
-    - default: 'image-registry.openshift-image-registry.svc:5000/sn_icr_namespace/tekton-lab:latest'
-      name: build-image
+    - name: build-image
       type: string
+      default: image-registry.openshift-image-registry.svc:5000/sn_icr_namespace/tekton-lab:latest
+
+  workspaces:
+    - name: output
+
   tasks:
     - name: cleanup
       taskRef:
@@ -33,48 +19,50 @@ spec:
       workspaces:
         - name: source
           workspace: output
+
     - name: git-clone
-      params:
-        - name: url
-          value: 'https://github.com/ibm-developer-skills-network/ttwst-jhxyb-ci-cd-pipeline_js'
-        - name: revision
-          value: ''
-        - name: refspec
-          value: ''
-        - name: submodules
-          value: 'true'
-        - name: depth
-          value: '1'
-        - name: sslVerify
-          value: 'true'
-        - name: crtFileName
-          value: ca-bundle.crt
-        - name: subdirectory
-          value: ''
-        - name: sparseCheckoutDirectories
-          value: ''
-        - name: deleteExisting
-          value: 'true'
-        - name: httpProxy
-          value: ''
-        - name: httpsProxy
-          value: ''
-        - name: noProxy
-          value: ''
-        - name: verbose
-          value: 'true'
-        - name: gitInitImage
-          value: 'registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:75d6228eb656b8778fb3bb8dc68c686ac1c9b787e5343ae3c2467f8e724af83e'
-        - name: userHome
-          value: /home/git
       runAfter:
         - cleanup
       taskRef:
         kind: ClusterTask
         name: git-clone
+      params:
+        - name: url
+          value: https://github.com/ibm-developer-skills-network/ttwst-jhxyb-ci-cd-pipeline_js
+        - name: revision
+          value: ""
+        - name: refspec
+          value: ""
+        - name: submodules
+          value: "true"
+        - name: depth
+          value: "1"
+        - name: sslVerify
+          value: "true"
+        - name: crtFileName
+          value: ca-bundle.crt
+        - name: subdirectory
+          value: ""
+        - name: sparseCheckoutDirectories
+          value: ""
+        - name: deleteExisting
+          value: "true"
+        - name: httpProxy
+          value: ""
+        - name: httpsProxy
+          value: ""
+        - name: noProxy
+          value: ""
+        - name: verbose
+          value: "true"
+        - name: gitInitImage
+          value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:75d6228eb656b8778fb3bb8dc68c686ac1c9b787e5343ae3c2467f8e724af83e
+        - name: userHome
+          value: /home/git
       workspaces:
         - name: output
           workspace: output
+
     - name: eslint
       runAfter:
         - git-clone
@@ -84,24 +72,31 @@ spec:
       workspaces:
         - name: source
           workspace: output
+
     - name: jest
-      params:
-        - name: args
-          value: '--passWithNoTests'
       runAfter:
         - eslint
       taskRef:
         kind: Task
         name: jest
+      params:
+        - name: args
+          value: "--passWithNoTests"
       workspaces:
         - name: source
           workspace: output
+
     - name: buildah
+      runAfter:
+        - jest
+      taskRef:
+        kind: ClusterTask
+        name: buildah
       params:
         - name: IMAGE
           value: $(params.build-image)
         - name: BUILDER_IMAGE
-          value: 'registry.redhat.io/rhel8/buildah@sha256:aac6629389db17e99894c5bee0da01d4c8065d11d8c6f6e1602f9484290baa70'
+          value: registry.redhat.io/rhel8/buildah@sha256:aac6629389db17e99894c5bee0da01d4c8065d11d8c6f6e1602f9484290baa70
         - name: STORAGE_DRIVER
           value: vfs
         - name: DOCKERFILE
@@ -109,22 +104,15 @@ spec:
         - name: CONTEXT
           value: .
         - name: TLSVERIFY
-          value: 'true'
+          value: "true"
         - name: FORMAT
           value: oci
         - name: BUILD_EXTRA_ARGS
-          value: ''
+          value: ""
         - name: PUSH_EXTRA_ARGS
-          value: ''
+          value: ""
         - name: SKIP_PUSH
-          value: 'false'
-      runAfter:
-        - jest
-      taskRef:
-        kind: ClusterTask
-        name: buildah
+          value: "false"
       workspaces:
         - name: source
           workspace: output
-  workspaces:
-    - name: output
