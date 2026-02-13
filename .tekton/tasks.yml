@@ -1,3 +1,6 @@
+# ---------------------------------------------------
+# TASK: CLEANUP - Remove previous workspace files
+# ---------------------------------------------------
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -12,6 +15,9 @@ spec:
         rm -rf $(workspaces.source.path)/*
 
 ---
+# ---------------------------------------------------
+# TASK: ESLINT - Run code linting
+# ---------------------------------------------------
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -28,10 +34,13 @@ spec:
         npx eslint .
 
 ---
+# ---------------------------------------------------
+# TASK: RUN JEST TESTS - Execute unit tests using Jest
+# ---------------------------------------------------
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: jest
+  name: run-jest-tests
 spec:
   params:
     - name: args
@@ -45,9 +54,12 @@ spec:
       workingDir: $(workspaces.source.path)
       script: |
         npm install
-        npm test -- $(params.args)
+        npx jest $(params.args)
 
 ---
+# ---------------------------------------------------
+# PIPELINE: CI/CD Pipeline
+# ---------------------------------------------------
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
@@ -93,11 +105,11 @@ spec:
         - name: source
           workspace: output
 
-    - name: jest
+    - name: run-jest-tests
       runAfter:
         - eslint
       taskRef:
-        name: jest
+        name: run-jest-tests
       params:
         - name: args
           value: "--passWithNoTests"
