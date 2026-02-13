@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  lint-and-test:
+  cicd-github-validate:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,3 +29,4 @@ jobs:
 
       - name: Run Jest
         run: npm test -- --passWithNoTests
+
